@@ -12,7 +12,17 @@
 </head>
 <body>
     <div id="app">
-        <product :premium="premium"></product>
+        <div class="cart">
+            <p>Cart({{ cart.length }})</p>
+            <div v-for="item in cart" :key="item.uid">
+                Item {{ item.variantId }} (ID: {{ item.uid }})
+                <button @click="removeFromCart(item.uid)">Remove</button>
+            </div>
+        </div>
+        <product 
+            :premium="premium" 
+            @add-to-cart="updateCart"
+        ></product>
     </div>
 </body>
 </html>

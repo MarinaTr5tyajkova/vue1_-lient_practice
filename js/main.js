@@ -16,7 +16,9 @@ Vue.component('product', {
                 <p v-if="inStock">In stock</p>
                 <p v-else>Out of Stock</p>
                 
-                <product-details :details="details"></product-details>
+                <ul>
+                    <li v-for="detail in details">{{ detail }}</li>
+                </ul>
 
                 <p>Shipping: {{ shipping }}</p>
 
@@ -26,18 +28,14 @@ Vue.component('product', {
                     :style="{ backgroundColor: variant.variantColor }"
                     @mouseover="updateProduct(index)">
                 </div>
-            </div>
 
-            <div class="cart">
-                <p>Cart({{ cart }})</p>
+                <button
+                    @click="addToCart"
+                    :disabled="!inStock"
+                    :class="{ disabledButton: !inStock }">
+                    Add to cart
+                </button>
             </div>
-
-            <button
-                @click="addToCart"
-                :disabled="!inStock"
-                :class="{ disabledButton: !inStock }">
-                Add to cart
-            </button>
         </div>
     `,
     data() {
@@ -60,51 +58,49 @@ Vue.component('product', {
                     variantImage: "./assets/vmSocks-blue-onWhite.jpg",
                     variantQuantity: 0
                 }
-            ],
-            cart: 0
+            ]
         }
     },
     methods: {
         addToCart() {
-            this.cart += 1
+            const uid = Date.now() + Math.random().toString(36).substr(2, 9);
+            this.$emit('add-to-cart', {
+                variantId: this.variants[this.selectedVariant].variantId,
+                uid: uid
+            });
         },
         updateProduct(index) {
-            this.selectedVariant = index
+            this.selectedVariant = index;
         }
     },
     computed: {
         title() {
-            return this.brand + ' ' + this.product
+            return this.brand + ' ' + this.product;
         },
         image() {
-            return this.variants[this.selectedVariant].variantImage
+            return this.variants[this.selectedVariant].variantImage;
         },
         inStock() {
-            return this.variants[this.selectedVariant].variantQuantity > 0
+            return this.variants[this.selectedVariant].variantQuantity > 0;
         },
         shipping() {
-            return this.premium ? 'Free' : 2.99
+            return this.premium ? "Free" : 2.99;
         }
     }
-})
-
-Vue.component('product-details', {
-    props: {
-        details: {
-            type: Array,
-            required: true
-        }
-    },
-    template: `
-        <ul>
-            <li v-for="detail in details">{{ detail }}</li>
-        </ul>
-    `
-})
+});
 
 new Vue({
     el: '#app',
     data: {
-        premium: true
+        premium: true,
+        cart: []
+    },
+    methods: {
+        updateCart(item) {
+            this.cart.push(item);
+        },
+        removeFromCart(uid) {
+            this.cart = this.cart.filter(item => item.uid !== uid);
+        }
     }
-})
+});
