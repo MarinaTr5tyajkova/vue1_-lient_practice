@@ -1,10 +1,87 @@
-Vue.component('product', {
-    props: {
-        premium: {
-            type: Boolean,
-            required: true
+Vue.component('product-review', {
+    template: `
+        <form class="review-form" @submit.prevent="onSubmit">
+            <p v-if="errors.length">
+                <b class="error">Please correct the following errors:</b>
+                <ul>
+                    <li v-for="error in errors" class="error">{{ error }}</li>
+                </ul>
+            </p>
+
+            <p>
+                <label>Name:</label>
+                <input v-model="name">
+            </p>
+
+            <p>
+                <label>Review:</label>
+                <textarea v-model="review"></textarea>
+            </p>
+
+            <p>
+                <label>Rating:</label>
+                <select v-model.number="rating">
+                    <option disabled value="">Select</option>
+                    <option>5</option>
+                    <option>4</option>
+                    <option>3</option>
+                    <option>2</option>
+                    <option>1</option>
+                </select>
+            </p>
+
+            <p>
+                <label>Would you recommend this product?</label><br>
+                <input type="radio" value="Yes" v-model="recommendation">
+                <label>Yes</label>
+                <input type="radio" value="No" v-model="recommendation">
+                <label>No</label>
+            </p>
+
+            <input type="submit" value="Submit">
+        </form>
+    `,
+    data() {
+        return {
+            name: '',
+            review: '',
+            rating: null,
+            recommendation: '',
+            errors: []
         }
     },
+    methods: {
+        onSubmit() {
+            this.errors = [];
+            if(!this.name) this.errors.push("Name required");
+            if(!this.review) this.errors.push("Review required");
+            if(!this.rating) this.errors.push("Rating required");
+            if(!this.recommendation) this.errors.push("Recommendation required");
+
+            if(this.errors.length) return;
+
+            this.$emit('review-submitted', {
+                name: this.name,
+                review: this.review,
+                rating: this.rating,
+                recommendation: this.recommendation
+            });
+
+            this.name = '';
+            this.review = '';
+            this.rating = null;
+            this.recommendation = '';
+        }
+    }
+});
+
+Vue.component('product-details', {
+    props: { details: { type: Array, required: true }},
+    template: `<ul><li v-for="detail in details">{{ detail }}</li></ul>`
+});
+
+Vue.component('product', {
+    props: { premium: { type: Boolean, required: true }},
     template: `
         <div class="product">
             <div class="product-image">
@@ -13,14 +90,23 @@ Vue.component('product', {
 
             <div class="product-info">
                 <h1>{{ title }}</h1>
-                <p v-if="inStock">In stock</p>
-                <p v-else>Out of Stock</p>
+                <p>{{ description }}</p>
                 
-                <ul>
-                    <li v-for="detail in details">{{ detail }}</li>
-                </ul>
+                <p v-if="inStock">In stock</p>
+                <p v-else class="out-of-stock">Out of Stock</p>
+                
+                <span v-if="onSale" class="sale-message">{{ saleMessage }}</span>
+                
+                <product-details :details="details"></product-details>
 
                 <p>Shipping: {{ shipping }}</p>
+                
+                <div class="sizes">
+                    <h3>Sizes available:</h3>
+                    <ul class="size-list">
+                        <li v-for="size in sizes" :key="size">{{ size }}</li>
+                    </ul>
+                </div>
 
                 <div class="color-box"
                     v-for="(variant, index) in variants"
@@ -29,12 +115,30 @@ Vue.component('product', {
                     @mouseover="updateProduct(index)">
                 </div>
 
-                <button
-                    @click="addToCart"
-                    :disabled="!inStock"
-                    :class="{ disabledButton: !inStock }">
-                    Add to cart
-                </button>
+                <div>
+                    <button @click="addToCart" 
+                            :disabled="!inStock" 
+                            :class="{ disabledButton: !inStock }">
+                        Add to cart
+                    </button>
+                </div>
+
+                <div class="review-list">
+                    <h2>Reviews</h2>
+                    <p v-if="!reviews.length">No reviews yet</p>
+                    <ul v-else>
+                        <li v-for="(review, index) in reviews" :key="index">
+                            <p><strong>{{ review.name }}</strong></p>
+                            <p>Rating: {{ review.rating }}/5</p>
+                            <p>{{ review.review }}</p>
+                            <p>Recommendation: {{ review.recommendation }}</p>
+                        </li>
+                    </ul>
+                </div>
+
+                <product-review @review-submitted="addReview"></product-review>
+
+                <a :href="amazonLink">More products like this</a>
             </div>
         </div>
     `,
@@ -42,9 +146,13 @@ Vue.component('product', {
         return {
             product: "Socks",
             brand: 'Vue Mastery',
+            description: 'A pair of warm, fuzzy socks',
             selectedVariant: 0,
             altText: "A pair of socks",
             details: ['80% cotton', '20% polyester', 'Gender-neutral'],
+            sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
+            onSale: true,
+            amazonLink: 'https://www.amazon.com/s/ref=nb_sb_noss?url=search-alias%3Daps&field-keywords=socks',
             variants: [
                 {
                     variantId: 2234,
@@ -58,7 +166,8 @@ Vue.component('product', {
                     variantImage: "./assets/vmSocks-blue-onWhite.jpg",
                     variantQuantity: 0
                 }
-            ]
+            ],
+            reviews: []
         }
     },
     methods: {
@@ -71,20 +180,20 @@ Vue.component('product', {
         },
         updateProduct(index) {
             this.selectedVariant = index;
+        },
+        addReview(review) {
+            this.reviews.push(review);
         }
     },
     computed: {
-        title() {
-            return this.brand + ' ' + this.product;
-        },
-        image() {
-            return this.variants[this.selectedVariant].variantImage;
-        },
-        inStock() {
-            return this.variants[this.selectedVariant].variantQuantity > 0;
-        },
-        shipping() {
-            return this.premium ? "Free" : 2.99;
+        title() { return this.brand + ' ' + this.product; },
+        image() { return this.variants[this.selectedVariant].variantImage; },
+        inStock() { return this.variants[this.selectedVariant].variantQuantity > 0; },
+        shipping() { return this.premium ? "Free" : 2.99; },
+        saleMessage() { 
+            return this.onSale 
+                ? `${this.brand} ${this.product} are on sale!` 
+                : '';
         }
     }
 });
@@ -96,11 +205,7 @@ new Vue({
         cart: []
     },
     methods: {
-        updateCart(item) {
-            this.cart.push(item);
-        },
-        removeFromCart(uid) {
-            this.cart = this.cart.filter(item => item.uid !== uid);
-        }
+        updateCart(item) { this.cart.push(item); },
+        removeFromCart(uid) { this.cart = this.cart.filter(item => item.uid !== uid); }
     }
 });
