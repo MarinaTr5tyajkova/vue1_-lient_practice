@@ -1,3 +1,6 @@
+// Глобальная шина событий
+const eventBus = new Vue()
+
 Vue.component('product-review', {
     template: `
         <form class="review-form" @submit.prevent="onSubmit">
@@ -60,7 +63,7 @@ Vue.component('product-review', {
 
             if(this.errors.length) return;
 
-            this.$emit('review-submitted', {
+            eventBus.$emit('review-submitted', {
                 name: this.name,
                 review: this.review,
                 rating: this.rating,
@@ -80,6 +83,57 @@ Vue.component('product-details', {
     template: `<ul><li v-for="detail in details">{{ detail }}</li></ul>`
 });
 
+Vue.component('product-tabs', {
+    props: {
+        reviews: Array,
+        details: Array,
+        shipping: String
+    },
+    template: `
+        <div class="tabs">
+            <div class="tabs-header">
+                <span v-for="tab in tabs" 
+                      :key="tab"
+                      class="tab"
+                      :class="{ activeTab: selectedTab === tab }"
+                      @click="selectedTab = tab">
+                    {{ tab }}
+                </span>
+            </div>
+            
+            <div v-show="selectedTab === 'Reviews'">
+                <p v-if="!reviews.length">No reviews yet</p>
+                <ul v-else>
+                    <li v-for="(review, index) in reviews" :key="index">
+                        <p><strong>{{ review.name }}</strong></p>
+                        <p>Rating: {{ review.rating }}/5</p>
+                        <p>{{ review.review }}</p>
+                        <p>Recommendation: {{ review.recommendation }}</p>
+                    </li>
+                </ul>
+            </div>
+            
+            <div v-show="selectedTab === 'Make a Review'">
+                <product-review></product-review>
+            </div>
+            
+            <div v-show="selectedTab === 'Shipping'">
+                <p>{{ shipping }}</p>
+            </div>
+            
+            <div v-show="selectedTab === 'Details'">
+                <product-details :details="details"></product-details>
+            </div>
+        </div>
+    `,
+    data() {
+        return {
+            tabs: ['Reviews', 'Make a Review', 'Shipping', 'Details'],
+            selectedTab: 'Reviews'
+        }
+    }
+});
+
 Vue.component('product', {
     props: { premium: { type: Boolean, required: true }},
     template: `
@@ -97,17 +151,6 @@ Vue.component('product', {
                 
                 <span v-if="onSale" class="sale-message">{{ saleMessage }}</span>
                 
-                <product-details :details="details"></product-details>
-
-                <p>Shipping: {{ shipping }}</p>
-                
-                <div class="sizes">
-                    <h3>Sizes available:</h3>
-                    <ul class="size-list">
-                        <li v-for="size in sizes" :key="size">{{ size }}</li>
-                    </ul>
-                </div>
-
                 <div class="color-box"
                     v-for="(variant, index) in variants"
                     :key="variant.variantId"
@@ -123,20 +166,11 @@ Vue.component('product', {
                     </button>
                 </div>
 
-                <div class="review-list">
-                    <h2>Reviews</h2>
-                    <p v-if="!reviews.length">No reviews yet</p>
-                    <ul v-else>
-                        <li v-for="(review, index) in reviews" :key="index">
-                            <p><strong>{{ review.name }}</strong></p>
-                            <p>Rating: {{ review.rating }}/5</p>
-                            <p>{{ review.review }}</p>
-                            <p>Recommendation: {{ review.recommendation }}</p>
-                        </li>
-                    </ul>
-                </div>
-
-                <product-review @review-submitted="addReview"></product-review>
+                <product-tabs 
+                    :reviews="reviews"
+                    :shipping="shipping"
+                    :details="details">
+                </product-tabs>
 
                 <a :href="amazonLink">More products like this</a>
             </div>
@@ -180,21 +214,23 @@ Vue.component('product', {
         },
         updateProduct(index) {
             this.selectedVariant = index;
-        },
-        addReview(review) {
-            this.reviews.push(review);
         }
     },
     computed: {
         title() { return this.brand + ' ' + this.product; },
         image() { return this.variants[this.selectedVariant].variantImage; },
         inStock() { return this.variants[this.selectedVariant].variantQuantity > 0; },
-        shipping() { return this.premium ? "Free" : 2.99; },
+        shipping() { return this.premium ? "Free" : "$2.99"; },
         saleMessage() { 
             return this.onSale 
                 ? `${this.brand} ${this.product} are on sale!` 
                 : '';
         }
+    },
+    mounted() {
+        eventBus.$on('review-submitted', review => {
+            this.reviews.push(review)
+        })
     }
 });
 
