@@ -1,5 +1,4 @@
-// Глобальная шина событий
-const eventBus = new Vue()
+const eventBus = new Vue();
 
 Vue.component('product-review', {
     template: `
@@ -198,7 +197,7 @@ Vue.component('product', {
                     variantId: 2235,
                     variantColor: 'blue',
                     variantImage: "./assets/vmSocks-blue-onWhite.jpg",
-                    variantQuantity: 0
+                    variantQuantity: 10
                 }
             ],
             reviews: []
@@ -206,11 +205,7 @@ Vue.component('product', {
     },
     methods: {
         addToCart() {
-            const uid = Date.now() + Math.random().toString(36).substr(2, 9);
-            this.$emit('add-to-cart', {
-                variantId: this.variants[this.selectedVariant].variantId,
-                uid: uid
-            });
+            this.$emit('add-to-cart', this.variants[this.selectedVariant].variantId);
         },
         updateProduct(index) {
             this.selectedVariant = index;
@@ -240,8 +235,30 @@ new Vue({
         premium: true,
         cart: []
     },
+    computed: {
+        groupedCart() {
+            const countMap = {};
+            
+            this.cart.forEach(variantId => {
+                if (!countMap[variantId]) {
+                    countMap[variantId] = 0;
+                }
+                countMap[variantId]++;
+            });
+
+            return Object.keys(countMap).map(id => ({
+                variantId: parseInt(id),
+                quantity: countMap[id]
+            }));
+        }
+    },
     methods: {
-        updateCart(item) { this.cart.push(item); },
-        removeFromCart(uid) { this.cart = this.cart.filter(item => item.uid !== uid); }
+        updateCart(variantId) {
+            this.cart.push(variantId);
+        },
+        removeFromCart(variantId) {
+            const index = this.cart.indexOf(variantId);
+            if (index > -1) this.cart.splice(index, 1);
+        }
     }
-});
+})

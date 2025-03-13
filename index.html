@@ -14,9 +14,9 @@
     <div id="app">
         <div class="cart">
             <p>Cart({{ cart.length }})</p>
-            <div v-for="item in cart" :key="item.uid">
-                Item {{ item.variantId }} (ID: {{ item.uid }})
-                <button @click="removeFromCart(item.uid)">Remove</button>
+            <div v-for="group in groupedCart" :key="group.variantId">
+                Item {{ group.variantId }} (Quantity: {{ group.quantity }})
+                <button @click="removeFromCart(group.variantId)">Remove</button>
             </div>
         </div>
         <product 
